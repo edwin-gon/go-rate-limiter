@@ -11,7 +11,7 @@ import (
 // Include Logger, DI (wire)
 // Leaky Bucket, Fixed Bucket, Custom Rate Limits, Leveraging DynamoDB to do quick reads, What if stale data is acquired
 
-var validClients *ClientMap = &ClientMap{map[string]*Entry{"VALID": {}}}
+var validClients *ClientMap = &ClientMap{map[string]*Entry{"VALID": {0, 0, 0, NewBasicSubscription()}}}
 
 func main() {
 
