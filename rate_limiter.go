@@ -20,13 +20,15 @@ func (cm *ClientMap) ValidClientId(clientId string) bool {
 	return ok
 }
 
-func RateLimiter(handler http.Handler) http.HandlerFunc {
+func SlidingWindow(handler http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var clientId = r.URL.Query().Get("ClientId")
 
 		defer ResponseMapper(w)
 
-		if !validClients.ValidClientId(clientId) {
+		if clientId == "" {
+			panic(NewBadRequestError())
+		} else if !validClients.ValidClientId(clientId) {
 			panic(NewUnauthorizedRequestError())
 		}
 
@@ -56,3 +58,5 @@ func RateLimiter(handler http.Handler) http.HandlerFunc {
 
 	})
 }
+
+// Leaky Bucket, Fixed Bucket, Custom Rate Limits

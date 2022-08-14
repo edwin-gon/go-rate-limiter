@@ -15,7 +15,7 @@ var validClients *ClientMap = &ClientMap{map[string]*Entry{"VALID": {}}}
 
 func main() {
 
-	http.HandleFunc("/client-name", RateLimiter(http.HandlerFunc(getClientName)))
+	http.HandleFunc("/client-name", SlidingWindow(http.HandlerFunc(getClientName)))
 
 	err := http.ListenAndServe(":5050", nil)
 
@@ -35,6 +35,8 @@ func ResponseMapper(w http.ResponseWriter) {
 	if err := recover(); err != nil {
 		var res APIError
 		switch err.(type) {
+		case *BadRequestError:
+			res = err.(*BadRequestError)
 		case *UnauthorizedRequestError:
 			res = err.(*UnauthorizedRequestError)
 		case *LimitExceededError:

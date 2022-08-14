@@ -6,25 +6,23 @@ type APIError interface {
 	GetStatusCode() int
 }
 
-// LimitExceededError
-type LimitExceededError struct {
-	Message        string
-	StatusCode     int
-	SubscribedRate string
+// BadRequestError (400)
+type BadRequestError struct {
+	Message    string
+	StatusCode int
 }
 
-func (err *LimitExceededError) GetStatusCode() int {
+func (err *BadRequestError) GetStatusCode() int {
 	return err.StatusCode
 }
 
-func NewLimitExceededError() *LimitExceededError {
-	msg := "Too many requests. Service will be made available per subscribed rate."
-	rate := "5 requests per minute" // TODO: Custom rate limits
-	return &LimitExceededError{Message: msg, StatusCode: http.StatusTooManyRequests, SubscribedRate: rate}
+func NewBadRequestError() *BadRequestError {
+	msg := "Invalid parameters provided."
+	return &BadRequestError{Message: msg, StatusCode: http.StatusBadRequest}
 }
 
-func (err *LimitExceededError) Error() string {
-	return "Too many requests were made."
+func (err *BadRequestError) Error() string {
+	return "Invalid parameters provided."
 }
 
 // UnauthorizedRequestError
@@ -46,7 +44,28 @@ func (err *UnauthorizedRequestError) Error() string {
 	return "Unauthorized Request was made."
 }
 
-// InternalServerError
+// LimitExceededError (429)
+type LimitExceededError struct {
+	Message        string
+	StatusCode     int
+	SubscribedRate string
+}
+
+func (err *LimitExceededError) GetStatusCode() int {
+	return err.StatusCode
+}
+
+func NewLimitExceededError() *LimitExceededError {
+	msg := "Too many requests. Service will be made available per subscribed rate."
+	rate := "5 requests per minute" // TODO: Custom rate limits
+	return &LimitExceededError{Message: msg, StatusCode: http.StatusTooManyRequests, SubscribedRate: rate}
+}
+
+func (err *LimitExceededError) Error() string {
+	return "Too many requests were made."
+}
+
+// InternalServerError (500)
 type InternalServerError struct {
 	Message    string
 	StatusCode int
