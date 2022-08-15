@@ -11,11 +11,15 @@ import (
 // Include Logger, DI (wire)
 // Leaky Bucket, Fixed Bucket, Custom Rate Limits, Leveraging DynamoDB to do quick reads, What if stale data is acquired
 
-var validClients *ClientMap = &ClientMap{map[string]*Entry{"VALID": {0, 0, 0, NewBasicSubscription()}}}
+var validClients *ClientMap = &ClientMap{map[string]*Entry{
+	"VALID": {0, 0, 0, NewBasicSubscription()},
+	"FIXED": {0, 0, 0, NewBasicSubscription()}}}
 
 func main() {
 
-	http.HandleFunc("/client-name", SlidingWindow(http.HandlerFunc(getClientName)))
+	http.HandleFunc("/sliding/client", WindowHandler(slidingWindow, http.HandlerFunc(getClientName)))
+
+	http.HandleFunc("/fixed/client", WindowHandler(fixedWindow, http.HandlerFunc(getClientName)))
 
 	err := http.ListenAndServe(":5050", nil)
 
@@ -25,6 +29,7 @@ func main() {
 		fmt.Printf("error occured: %s\n", err)
 		os.Exit(1)
 	}
+
 }
 
 func getClientName(w http.ResponseWriter, r *http.Request) {
