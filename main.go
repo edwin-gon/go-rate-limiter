@@ -51,6 +51,6 @@ func ResponseMapper(w http.ResponseWriter) {
 }
 
 func WriteResponse(w http.ResponseWriter, error APIError) {
-	w.WriteHeader(error.GetStatusCode())
+	w.WriteHeader(error.StatusCode())
 	json.NewEncoder(w).Encode(error)
 }

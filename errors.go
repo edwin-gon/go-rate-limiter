@@ -3,22 +3,22 @@ package main
 import "net/http"
 
 type APIError interface {
-	GetStatusCode() int
+	StatusCode() int
 }
 
 // BadRequestError (400)
 type BadRequestError struct {
-	Message    string
-	StatusCode int
+	message    string
+	statusCode int
 }
 
-func (err *BadRequestError) GetStatusCode() int {
-	return err.StatusCode
+func (err *BadRequestError) StatusCode() int {
+	return err.statusCode
 }
 
 func NewBadRequestError() *BadRequestError {
 	msg := "Invalid parameters provided."
-	return &BadRequestError{Message: msg, StatusCode: http.StatusBadRequest}
+	return &BadRequestError{message: msg, statusCode: http.StatusBadRequest}
 }
 
 func (err *BadRequestError) Error() string {
@@ -27,17 +27,17 @@ func (err *BadRequestError) Error() string {
 
 // UnauthorizedRequestError
 type UnauthorizedRequestError struct {
-	Message    string
-	StatusCode int
+	message    string
+	statusCode int
 }
 
-func (err *UnauthorizedRequestError) GetStatusCode() int {
-	return err.StatusCode
+func (err *UnauthorizedRequestError) StatusCode() int {
+	return err.statusCode
 }
 
 func NewUnauthorizedRequestError() *UnauthorizedRequestError {
 	msg := "Request was denied."
-	return &UnauthorizedRequestError{Message: msg, StatusCode: http.StatusUnauthorized}
+	return &UnauthorizedRequestError{message: msg, statusCode: http.StatusUnauthorized}
 }
 
 func (err *UnauthorizedRequestError) Error() string {
@@ -46,19 +46,19 @@ func (err *UnauthorizedRequestError) Error() string {
 
 // LimitExceededError (429)
 type LimitExceededError struct {
-	Message        string
-	StatusCode     int
-	SubscribedRate string
+	message        string
+	statusCode     int
+	subscribedRate string
 }
 
-func (err *LimitExceededError) GetStatusCode() int {
-	return err.StatusCode
+func (err *LimitExceededError) StatusCode() int {
+	return err.statusCode
 }
 
 func NewLimitExceededError() *LimitExceededError {
 	msg := "Too many requests. Service will be made available per subscribed rate."
 	rate := "5 requests per minute" // TODO: Custom rate limits
-	return &LimitExceededError{Message: msg, StatusCode: http.StatusTooManyRequests, SubscribedRate: rate}
+	return &LimitExceededError{message: msg, statusCode: http.StatusTooManyRequests, subscribedRate: rate}
 }
 
 func (err *LimitExceededError) Error() string {
@@ -67,19 +67,21 @@ func (err *LimitExceededError) Error() string {
 
 // InternalServerError (500)
 type InternalServerError struct {
-	Message    string
-	StatusCode int
+	message    string
+	statusCode int
 }
 
-func (err *InternalServerError) GetStatusCode() int {
-	return err.StatusCode
+const internalErrorMessage = "Internal Server Error."
+
+func (err *InternalServerError) StatusCode() int {
+	return err.statusCode
 }
 
 func NewInternalServerError() *InternalServerError {
-	msg := "Internal Server Error."
-	return &InternalServerError{Message: msg, StatusCode: http.StatusInternalServerError}
+	msg := internalErrorMessage
+	return &InternalServerError{message: msg, statusCode: http.StatusInternalServerError}
 }
 
 func (err *InternalServerError) Error() string {
-	return "Internal Server Error."
+	return internalErrorMessage
 }
