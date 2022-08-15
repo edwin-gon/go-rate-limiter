@@ -110,17 +110,20 @@ func WindowHandler(windowType string, handler http.Handler) http.HandlerFunc {
 			panic(NewBadRequestError())
 		}
 
-		UpdateEntry(clientId, invocationTime)
+		err := UpdateWindowEntry(clientId, invocationTime)
+		if err != nil {
+			panic(err)
+		}
 		handler.ServeHTTP(w, r)
 	})
 }
 
-func UpdateEntry(clientId string, invocationTime int64) {
+func UpdateWindowEntry(clientId string, invocationTime int64) error {
 	var entry = validClients.entries[clientId]
 
 	var limit = entry.subscription.RequestLimit()
 	var timeFrame = entry.subscription.TimeFrame()
-
+	var err error
 	if entry.startTime == 0 && entry.invocations == 0 { // new entry
 		entry.startTime = invocationTime
 		entry.lastInvocation = invocationTime
@@ -136,8 +139,34 @@ func UpdateEntry(clientId string, invocationTime int64) {
 		entry.lastInvocation = invocationTime
 		fmt.Println("Reset entry for: ", clientId, entry.invocations)
 	} else {
-		panic(NewLimitExceededError())
+		err = NewLimitExceededError()
 	}
+	return err
 }
 
-//Leaky Bucket, Fixed Bucket, Custom Rate Limits
+//Fixed Bucket — having certain number request limit R over time T. Tokens are replensihed at a rate of r over t time.
+func TokenBucket(client *Entry, invocationTime int64) error {
+	var err error
+	if invocationTime == 0 {
+		client.invocations = client.subscription.RequestLimit()
+	} else if client.invocations < client.subscription.RequestLimit() {
+		//Determine number of tokens to add to bucket and should not exceed limit
+		rateAdded := client.subscription.TimeFrame() / int64(client.subscription.RequestLimit())
+		tokensToAdd := (client.lastInvocation - invocationTime) / rateAdded
+		client.invocations += int(tokensToAdd)
+
+		if client.invocations > client.subscription.RequestLimit() {
+			client.invocations = client.subscription.RequestLimit()
+		}
+
+		if client.invocations < 1 {
+			err = NewLimitExceededError()
+		} else {
+			client.invocations--
+		}
+	}
+	return err
+}
+
+//Leaky Bucket — a bucket can be thought of as a queue and r number of requests are processed over t time and once bucket is full no requests are queued
+// Process requests every 12 seconds

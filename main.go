@@ -12,8 +12,9 @@ import (
 // Leaky Bucket, Fixed Bucket, Custom Rate Limits, Leveraging DynamoDB to do quick reads, What if stale data is acquired
 
 var validClients *ClientMap = &ClientMap{map[string]*Entry{
-	"VALID": {0, 0, 0, NewBasicSubscription()},
-	"FIXED": {0, 0, 0, NewBasicSubscription()}}}
+	"SLIDING": {0, 0, 0, NewBasicSubscription()},
+	"FIXED":   {0, 0, 0, NewBasicSubscription()},
+	"BUCKET":  {0, 0, 0, NewBasicSubscription()}}}
 
 func main() {
 
