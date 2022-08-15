@@ -13,9 +13,9 @@ type Entry struct {
 }
 
 type Subscription interface {
-	GetName() string
-	GetRequestLimit() int
-	GetTimeFrame() int64
+	Name() string
+	RequestLimit() int
+	TimeFrame() int64
 }
 
 type BasicSubscription struct {
@@ -28,36 +28,46 @@ type PremiumSubscription struct {
 	requestLimit, timeFrame int64
 }
 
-func (sub *BasicSubscription) GetName() string {
-	return "Basic"
+const (
+	basicName         = "Basic"
+	basicRequestLimit = 5
+	basicTimeFrame    = 60000
+
+	premiumName         = "Premium"
+	premiumRequestLimit = 20
+	premiumTimeFrame    = 60000
+)
+
+func (sub *BasicSubscription) Name() string {
+	return basicName
 }
 
-func (sub *BasicSubscription) GetRequestLimit() int {
-	return 5
+func (sub *BasicSubscription) RequestLimit() int {
+	return basicRequestLimit
 }
 
-func (sub *BasicSubscription) GetTimeFrame() int64 {
-	return 60000
+func (sub *BasicSubscription) TimeFrame() int64 {
+	return basicTimeFrame
 }
 
 func NewBasicSubscription() *BasicSubscription {
-	return &BasicSubscription{"BASIC", 5, 60000}
+	return &BasicSubscription{basicName, basicRequestLimit, basicTimeFrame}
 }
 
-func (sub *PremiumSubscription) GetName() string {
-	return "Premium"
+func (sub *PremiumSubscription) Name() string {
+	return premiumName
 }
 
-func (sub *PremiumSubscription) GetRequestLimit() int {
-	return 20
+func (sub *PremiumSubscription) RequestLimit() int {
+	return premiumRequestLimit
 }
 
-func (sub *PremiumSubscription) GetTimeFrame() int64 {
-	return 60000
+func (sub *PremiumSubscription) TimeFrame() int64 {
+	return premiumTimeFrame
 }
 
 func NewPremiumSubscription() *PremiumSubscription {
-	return &PremiumSubscription{"PREMIUM", 20, 60000}
+	return &PremiumSubscription{premiumName, premiumRequestLimit, premiumTimeFrame}
 }
 
 type ClientMap struct {
@@ -86,8 +96,8 @@ func SlidingWindow(handler http.Handler) http.HandlerFunc {
 
 		var entry = validClients.entries[clientId]
 
-		var limit = entry.subscription.GetRequestLimit()
-		var timeFrame = entry.subscription.GetTimeFrame()
+		var limit = entry.subscription.RequestLimit()
+		var timeFrame = entry.subscription.TimeFrame()
 
 		if entry.startTime == 0 && entry.invocations == 0 { // new entry
 			entry.startTime = invocationTime
