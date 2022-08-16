@@ -1,116 +1,43 @@
-package main
+package ratelimiter
 
 import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/edwin-gon/go-rate-limiter/apiresponse"
 )
-
-type Entry struct {
-	startTime, lastInvocation int64
-	invocations               int
-	subscription              Subscription
-}
-
-type Subscription interface {
-	Name() string
-	RequestLimit() int
-	TimeFrame() int64 // Millisecond count
-}
-
-type BasicSubscription struct {
-	name         string
-	requestLimit int
-	timeFrame    int64
-}
-
-type PremiumSubscription struct {
-	name         string
-	requestLimit int
-	timeFrame    int64
-}
 
 const (
-	basicName         = "Basic"
-	basicRequestLimit = 5
-	basicTimeFrame    = 60000
-
-	premiumName         = "Premium"
-	premiumRequestLimit = 20
-	premiumTimeFrame    = 60000
+	SlidingWindow = "sliding"
+	FixedWindow   = "window"
 )
 
-func (sub *BasicSubscription) Name() string {
-	return basicName
-}
-
-func (sub *BasicSubscription) RequestLimit() int {
-	return basicRequestLimit
-}
-
-func (sub *BasicSubscription) TimeFrame() int64 {
-	return basicTimeFrame
-}
-
-func NewBasicSubscription() *BasicSubscription {
-	return &BasicSubscription{basicName, basicRequestLimit, basicTimeFrame}
-}
-
-func (sub *PremiumSubscription) Name() string {
-	return premiumName
-}
-
-func (sub *PremiumSubscription) RequestLimit() int {
-	return premiumRequestLimit
-}
-
-func (sub *PremiumSubscription) TimeFrame() int64 {
-	return premiumTimeFrame
-}
-
-func NewPremiumSubscription() *PremiumSubscription {
-	return &PremiumSubscription{premiumName, premiumRequestLimit, premiumTimeFrame}
-}
-
-type ClientMap struct {
-	entries map[string]*Entry
-}
-
-func (cm *ClientMap) ValidClientId(clientId string) bool {
-	_, ok := cm.entries[clientId]
-	return ok
-}
-
-const (
-	slidingWindow = "sliding"
-	fixedWindow   = "window"
-)
-
-func WindowHandler(windowType string, handler http.Handler) http.HandlerFunc {
+func WindowHandler(windowType string, clientMap *ClientMap, handler http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var clientId = r.URL.Query().Get("ClientId")
 
-		defer ResponseMapper(w)
+		defer apiresponse.ResponseMapper(w)
 
 		if clientId == "" {
-			panic(NewBadRequestError())
-		} else if !validClients.ValidClientId(clientId) {
-			panic(NewUnauthorizedRequestError())
+			panic(apiresponse.NewBadRequestError())
+		} else if !clientMap.ValidClientId(clientId) {
+			panic(apiresponse.NewUnauthorizedRequestError())
 		}
 
 		var now = time.Now()
 		var invocationTime int64 = 0
 
 		switch windowType {
-		case slidingWindow:
+		case SlidingWindow:
 			invocationTime = now.UnixMilli()
-		case fixedWindow:
+		case FixedWindow:
 			invocationTime = now.Truncate(time.Minute).UnixMilli()
 		default:
-			panic(NewBadRequestError())
+			panic(apiresponse.NewBadRequestError())
 		}
 
-		err := UpdateWindowEntry(clientId, invocationTime)
+		err := UpdateWindowEntry(clientMap.Entries[clientId], clientId, invocationTime)
 		if err != nil {
 			panic(err)
 		}
@@ -118,8 +45,7 @@ func WindowHandler(windowType string, handler http.Handler) http.HandlerFunc {
 	})
 }
 
-func UpdateWindowEntry(clientId string, invocationTime int64) error {
-	var entry = validClients.entries[clientId]
+func UpdateWindowEntry(entry *Entry, clientId string, invocationTime int64) error {
 
 	var limit = entry.subscription.RequestLimit()
 	var timeFrame = entry.subscription.TimeFrame()
@@ -139,7 +65,7 @@ func UpdateWindowEntry(clientId string, invocationTime int64) error {
 		entry.lastInvocation = invocationTime
 		fmt.Println("Reset entry for: ", clientId, entry.invocations)
 	} else {
-		err = NewLimitExceededError()
+		err = apiresponse.NewLimitExceededError()
 	}
 	return err
 }
@@ -160,7 +86,7 @@ func TokenBucket(client *Entry, invocationTime int64) error {
 		}
 
 		if client.invocations < 1 {
-			err = NewLimitExceededError()
+			err = apiresponse.NewLimitExceededError()
 		} else {
 			client.invocations--
 		}
