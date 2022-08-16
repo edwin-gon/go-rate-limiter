@@ -1,26 +1,27 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/edwin-gon/go-rate-limiter/ratelimiter"
 )
 
 // Include Logger, DI (wire)
 // Leaky Bucket, Fixed Bucket, Custom Rate Limits, Leveraging DynamoDB to do quick reads, What if stale data is acquired
 
-var validClients *ClientMap = &ClientMap{map[string]*Entry{
-	"SLIDING": {0, 0, 0, NewBasicSubscription()},
-	"FIXED":   {0, 0, 0, NewBasicSubscription()},
-	"BUCKET":  {0, 0, 0, NewBasicSubscription()}}}
+var validClients *ratelimiter.ClientMap = &ratelimiter.ClientMap{Entries: map[string]*ratelimiter.Entry{
+	"SLIDING": ratelimiter.NewEntry(ratelimiter.NewBasicSubscription()),
+	"FIXED":   ratelimiter.NewEntry(ratelimiter.NewBasicSubscription()),
+	"BUCKET":  ratelimiter.NewEntry(ratelimiter.NewBasicSubscription())}}
 
 func main() {
 
-	http.HandleFunc("/sliding/client", WindowHandler(slidingWindow, http.HandlerFunc(getClientName)))
+	http.HandleFunc("/sliding/client", ratelimiter.WindowHandler(ratelimiter.SlidingWindow, validClients, http.HandlerFunc(getClientName)))
 
-	http.HandleFunc("/fixed/client", WindowHandler(fixedWindow, http.HandlerFunc(getClientName)))
+	http.HandleFunc("/fixed/client", ratelimiter.WindowHandler(ratelimiter.FixedWindow, validClients, http.HandlerFunc(getClientName)))
 
 	err := http.ListenAndServe(":5050", nil)
 
@@ -35,28 +36,4 @@ func main() {
 
 func getClientName(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("got /client-name request\n")
-}
-
-func ResponseMapper(w http.ResponseWriter) {
-	if err := recover(); err != nil {
-		var res APIError
-		switch err.(type) {
-		case *BadRequestError:
-			res = err.(*BadRequestError)
-		case *UnauthorizedRequestError:
-			res = err.(*UnauthorizedRequestError)
-		case *LimitExceededError:
-			res = err.(*LimitExceededError)
-		default:
-			res = NewInternalServerError()
-		}
-		WriteResponse(w, res)
-	} else {
-		w.WriteHeader(http.StatusOK)
-	}
-}
-
-func WriteResponse(w http.ResponseWriter, error APIError) {
-	w.WriteHeader(error.StatusCode())
-	json.NewEncoder(w).Encode(error)
 }
