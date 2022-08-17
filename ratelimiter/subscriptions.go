@@ -28,34 +28,34 @@ const (
 	premiumTimeFrame    = 60000
 )
 
-func (sub *BasicSubscription) Name() string {
+func (sub BasicSubscription) Name() string {
 	return basicName
 }
 
-func (sub *BasicSubscription) RequestLimit() int {
+func (sub BasicSubscription) RequestLimit() int {
 	return basicRequestLimit
 }
 
-func (sub *BasicSubscription) TimeFrame() int64 {
+func (sub BasicSubscription) TimeFrame() int64 {
 	return basicTimeFrame
 }
 
-func NewBasicSubscription() *BasicSubscription {
-	return &BasicSubscription{basicName, basicRequestLimit, basicTimeFrame}
+func NewBasicSubscription() BasicSubscription {
+	return BasicSubscription{basicName, basicRequestLimit, basicTimeFrame}
 }
 
-func (sub *PremiumSubscription) Name() string {
+func (sub PremiumSubscription) Name() string {
 	return premiumName
 }
 
-func (sub *PremiumSubscription) RequestLimit() int {
+func (sub PremiumSubscription) RequestLimit() int {
 	return premiumRequestLimit
 }
 
-func (sub *PremiumSubscription) TimeFrame() int64 {
+func (sub PremiumSubscription) TimeFrame() int64 {
 	return premiumTimeFrame
 }
 
-func NewPremiumSubscription() *PremiumSubscription {
-	return &PremiumSubscription{premiumName, premiumRequestLimit, premiumTimeFrame}
+func NewPremiumSubscription() PremiumSubscription {
+	return PremiumSubscription{premiumName, premiumRequestLimit, premiumTimeFrame}
 }

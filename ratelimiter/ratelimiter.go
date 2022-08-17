@@ -16,7 +16,7 @@ const (
 func WindowHandler(windowType string, clientMap *ClientMap, handler http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var clientId = r.URL.Query().Get("ClientId")
-
+		var err error
 		defer apiresponse.ResponseMapper(w)
 
 		if clientId == "" {
@@ -31,13 +31,14 @@ func WindowHandler(windowType string, clientMap *ClientMap, handler http.Handler
 		switch windowType {
 		case SlidingWindow:
 			invocationTime = now.UnixMilli()
+			windowEntry := clientMap.Entries[clientId].(*WindowEntry)
+			err = UpdateWindowEntry(windowEntry, clientId, invocationTime)
 		case FixedWindow:
 			invocationTime = now.Truncate(time.Minute).UnixMilli()
 		default:
 			panic(apiresponse.NewBadRequestError())
 		}
 
-		err := UpdateWindowEntry(clientMap.Entries[clientId], clientId, invocationTime)
 		if err != nil {
 			panic(err)
 		}
@@ -45,7 +46,7 @@ func WindowHandler(windowType string, clientMap *ClientMap, handler http.Handler
 	})
 }
 
-func UpdateWindowEntry(entry *Entry, clientId string, invocationTime int64) error {
+func UpdateWindowEntry(entry *WindowEntry, clientId string, invocationTime int64) error {
 
 	var limit = entry.subscription.RequestLimit()
 	var timeFrame = entry.subscription.TimeFrame()
@@ -71,7 +72,7 @@ func UpdateWindowEntry(entry *Entry, clientId string, invocationTime int64) erro
 }
 
 //Fixed Bucket — having certain number request limit R over time T. Tokens are replensihed at a rate of r over t time.
-func TokenBucket(client *Entry, invocationTime int64) error {
+func TokenBucket(client WindowEntry, invocationTime int64) error {
 	var err error
 	if invocationTime == 0 {
 		client.invocations = client.subscription.RequestLimit()
@@ -96,3 +97,7 @@ func TokenBucket(client *Entry, invocationTime int64) error {
 
 //Leaky Bucket — a bucket can be thought of as a queue and r number of requests are processed over t time and once bucket is full no requests are queued
 // Process requests every 12 seconds
+func LeakyBucket(client *Entry, invocationTime int64) error {
+	// Create a local queue and pull at a specificed rate if not empty
+	return nil
+}

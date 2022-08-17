@@ -12,10 +12,10 @@ import (
 // Include Logger, DI (wire)
 // Leaky Bucket, Fixed Bucket, Custom Rate Limits, Leveraging DynamoDB to do quick reads, What if stale data is acquired
 
-var validClients *ratelimiter.ClientMap = &ratelimiter.ClientMap{Entries: map[string]*ratelimiter.Entry{
-	"SLIDING": ratelimiter.NewEntry(ratelimiter.NewBasicSubscription()),
-	"FIXED":   ratelimiter.NewEntry(ratelimiter.NewBasicSubscription()),
-	"BUCKET":  ratelimiter.NewEntry(ratelimiter.NewBasicSubscription())}}
+var validClients *ratelimiter.ClientMap = &ratelimiter.ClientMap{Entries: map[string]ratelimiter.Entry{
+	"SLIDING": ratelimiter.NewWindowEntry(ratelimiter.NewBasicSubscription()),
+	"FIXED":   ratelimiter.NewWindowEntry(ratelimiter.NewBasicSubscription()),
+	"BUCKET":  ratelimiter.NewTokenEntry(ratelimiter.NewBasicSubscription())}}
 
 func main() {
 
