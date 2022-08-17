@@ -17,6 +17,7 @@ type TokenEntry struct {
 	startTime, lastInvocation int64
 	invocations               int
 	subscription              Subscription
+	queue                     *BasicQueue[int]
 }
 
 func NewWindowEntry(subType Subscription) *WindowEntry {
@@ -40,7 +41,7 @@ func (entry *WindowEntry) Subscription() Subscription {
 }
 
 func NewTokenEntry(subType Subscription) *TokenEntry {
-	return &TokenEntry{subscription: subType}
+	return &TokenEntry{subscription: subType, queue: NewBasicQueue[int](subType.RequestLimit())}
 }
 
 func (entry *TokenEntry) StartTime() int64 {

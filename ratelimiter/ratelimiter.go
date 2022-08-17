@@ -31,13 +31,14 @@ func WindowHandler(windowType string, clientMap *ClientMap, handler http.Handler
 		switch windowType {
 		case SlidingWindow:
 			invocationTime = now.UnixMilli()
-			windowEntry := clientMap.Entries[clientId].(*WindowEntry)
-			err = UpdateWindowEntry(windowEntry, clientId, invocationTime)
 		case FixedWindow:
 			invocationTime = now.Truncate(time.Minute).UnixMilli()
 		default:
 			panic(apiresponse.NewBadRequestError())
 		}
+
+		windowEntry := clientMap.Entries[clientId].(*WindowEntry)
+		err = UpdateWindowEntry(windowEntry, clientId, invocationTime)
 
 		if err != nil {
 			panic(err)
@@ -72,32 +73,53 @@ func UpdateWindowEntry(entry *WindowEntry, clientId string, invocationTime int64
 }
 
 //Fixed Bucket — having certain number request limit R over time T. Tokens are replensihed at a rate of r over t time.
-func TokenBucket(client WindowEntry, invocationTime int64) error {
-	var err error
+func TokenBucket(client TokenEntry, invocationTime int64) error {
+	// Initial state
 	if invocationTime == 0 {
 		client.invocations = client.subscription.RequestLimit()
-	} else if client.invocations < client.subscription.RequestLimit() {
-		//Determine number of tokens to add to bucket and should not exceed limit
-		rateAdded := client.subscription.TimeFrame() / int64(client.subscription.RequestLimit())
-		tokensToAdd := (client.lastInvocation - invocationTime) / rateAdded
-		client.invocations += int(tokensToAdd)
-
-		if client.invocations > client.subscription.RequestLimit() {
-			client.invocations = client.subscription.RequestLimit()
-		}
-
-		if client.invocations < 1 {
-			err = apiresponse.NewLimitExceededError()
-		} else {
-			client.invocations--
-		}
+		return nil
 	}
-	return err
+
+	rateAdded := client.subscription.TimeFrame() / int64(client.subscription.RequestLimit()) // time / token
+	tokensToAdd := int((invocationTime - client.lastInvocation) / rateAdded)                 // token
+	combinedTokens := client.invocations + int(tokensToAdd)
+
+	//Limit Exceeded
+	if combinedTokens < 1 {
+		return apiresponse.NewLimitExceededError()
+	}
+
+	//Update Tokens — Reset to limit or increment
+	if combinedTokens > client.subscription.RequestLimit() {
+		client.invocations = client.subscription.RequestLimit()
+	} else {
+		client.invocations = combinedTokens
+	}
+
+	client.invocations-- // Token to be used for request
+
+	return nil
 }
 
 //Leaky Bucket — a bucket can be thought of as a queue and r number of requests are processed over t time and once bucket is full no requests are queued
-// Process requests every 12 seconds
-func LeakyBucket(client *Entry, invocationTime int64) error {
-	// Create a local queue and pull at a specificed rate if not empty
+func LeakyBucket(client *TokenEntry, invocationTime int64) error {
+	// Check if queue value can be dequeued
+	// Attempt to add to the queue if unable return error
+	if client.queue.Count() > 0 {
+		rateAdded := client.subscription.TimeFrame() / int64(client.subscription.RequestLimit()) // time / token
+		requestToDequeue := int((invocationTime - client.lastInvocation) / rateAdded)
+
+		for requestToDequeue > 0 {
+			packet := client.queue.Dequeue()
+			fmt.Printf("Packet %d dequeued.\n", packet)
+			requestToDequeue--
+		}
+	}
+
+	if wasAdded := client.queue.Enqueue(int(invocationTime)); !wasAdded {
+		return apiresponse.NewLimitExceededError()
+	}
+
+	fmt.Println("Packet was recieved.")
 	return nil
 }
